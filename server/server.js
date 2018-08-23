@@ -15,6 +15,13 @@ app.post('/todos', (req, res) => {
     }).catch((err) => {
         res.status(400).send(err);
     });
+});
+app.get('/todos', (req, res) => {
+    ToDo.find().then(todos => {
+        res.status(200).send({ todos });
+    }, e => {
+        res.status(400).send(e);
+    });
 })
 app.listen(3000, () => {
     console.log('Starting at http://localhost:3000');
