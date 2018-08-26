@@ -11,7 +11,7 @@ app.use(bodyParser.json());
 app.post('/todos', (req, res) => {
     const newTask = new ToDo({ text: req.body.text });
     newTask.save().then((doc) => {
-        res.status(200).send(doc)
+        res.status(201).send(doc)
     }).catch((err) => {
         res.status(400).send(err);
     });

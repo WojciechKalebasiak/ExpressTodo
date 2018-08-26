@@ -4,16 +4,13 @@ const request = require('supertest');
 const { app } = require('../server/server');
 const { ToDo } = require('../server/models/ToDo');
 
-beforeEach(done => {
-    ToDo.deleteMany().then(() => done());
-});
 describe('POST /todos', () => {
     it('should create a new todo', done => {
-        const text = "Test";
+        const text = "Test";Z
         request(app)
             .post('/todos')
             .send({ text })
-            .expect(200)
+            .expect(201)
             .expect((res) => {
                 expect(res.body.text).to.equal(text);
             })
@@ -21,13 +18,15 @@ describe('POST /todos', () => {
                 if (err) {
                     return done(err)
                 }
-                ToDo.find().then(todos => {
-                    expect(todos.length).to.equal(1);
-                    expect(todos[0].text).to.equal(text);
+                ToDo.findById(res.body._id).then(doc => {
+                    expect(doc.text).to.equals(text);
                     done();
-                }).catch(err => done(err));
+                }, err => {
+                    done(err);
+                })
             });
     });
+
     it('should not create a new todo', done => {
         request(app)
             .post('/todos')
@@ -37,10 +36,41 @@ describe('POST /todos', () => {
                 if (err) {
                     return done(err)
                 }
-                ToDo.find().then(todos => {
-                    expect(todos.length).to.equal(0);
+                ToDo.findById(res.body._id).then((doc) => {
+                    expect(doc).to.be.null;
                     done();
-                }).catch(err => done(err));
+                }).catch((err) => {
+                    done(err);
+                });
             });
     });
+    after((done) => {
+        ToDo.deleteOne({ text: { $regex: /Test/ } }).then(() => done());
+    })
 });
+describe('GET /todos', () => {
+    before((done) => {
+        const ToDos = [
+            {
+                text: 'Some test todo'
+            },
+            {
+                text: 'Another test todo'
+            }
+        ]
+        ToDo.insertMany(ToDos).then(() => done());
+    });
+    it('should return all todos', (done) => {
+        request(app)
+            .get('/todos')
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.todos).to.includes(ToDos);
+            })
+            .end(done);
+    });
+
+    after((done) => {
+        ToDo.deleteMany({ text: { $regex: /test/ } }).then(() => done());
+    })
+})
