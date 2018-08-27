@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "node": "8.11.3"
+  },
   "scripts": {
-    "start": "nodemon server/server.js",
+    "start": "node server/server.js",
+    "watch": "nodemon server/server.js",
     "test": "mocha",
-    "test-watch": "nodemon --exec \"npm-test\""
+    "test-watch": "nodemon --exec \"npm test\""
   },
   "keywords": [],
   "author": "",
