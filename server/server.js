@@ -43,6 +43,6 @@ app.get('/todos/:id', (req, res) => {
     });
 });
 app.listen(`${PORT}`, () => {
-    console.log(`Starting at ${PORT});
+    console.log(`Starting at ${PORT}`);
 });
 module.exports = { app };
