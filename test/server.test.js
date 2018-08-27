@@ -121,3 +121,46 @@ describe('GET /todos/:id', () => {
         ToDo.deleteMany({ text: { $regex: /test/ } }).then(() => done());
     });
 });
+describe('DELETE /todos/:id', () => {
+    let TodoToDelete;
+    const ToDoToInsert = {
+        text: 'Some test todo',
+    }
+    before((done) => {
+        ToDo.insertMany(ToDoToInsert).then(insertedTodo => {
+            ToDo.findById(insertedTodo[0]._id).then(todo => {
+                TodoToDelete = JSON.parse(JSON.stringify(todo));
+                done();
+            });
+        });
+    });
+    it('should delete correct document', (done) => {
+        request(app)
+            .delete(`/todos/${TodoToDelete._id}`)
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.todo).to.eql(TodoToDelete);
+            })
+            .end((err, res) => {
+                if (err) {
+                    return done(err);
+                }
+                ToDo.findById(res.body.todo._id).then(todo => {
+                    expect(todo).to.not.exist;
+                    done();
+                }, e => done(e));
+            });
+    });
+    it('should\'nt delete anything if no document found', (done) => {
+        request(app)
+            .delete(`/todos/${new ObjectID().toHexString()}`)
+            .expect(404)
+            .end(done)
+    });
+    it('should\'nt delete if ID is malformed', (done) => {
+        request(app)
+            .delete(`/todos/123abc`)
+            .expect(404)
+            .end(done)
+    });
+});
