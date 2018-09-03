@@ -164,3 +164,65 @@ describe('DELETE /todos/:id', () => {
             .end(done)
     });
 });
+describe('PATCH /todos/:id', () => {
+    let notCompletedTodo = {
+        text: 'test not completed todo'
+    };
+    let completedTodo = {
+        text: "test completed todo",
+        completed: true,
+        completedAt:333
+    };
+    before((done) => {
+        ToDo.insertMany([completedTodo, notCompletedTodo]).then(docs => {
+            completedTodo = docs[0];
+            notCompletedTodo = docs[1];
+            done();
+        }).catch(e => {
+            done(e);
+        });
+    });
+    it('should update todo', done => {
+        request(app)
+            .patch(`/todos/${notCompletedTodo._id.toHexString()}`)
+            .send({ text: 'notCompleted test todo', completed: true })
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.todo.text).to.be.equal('notCompleted test todo');
+                expect(res.body.todo.completed).to.be.true;
+                expect(res.body.completedAt).to.be.a(Number);
+            })
+            .end((err, res) => {
+                ToDo.findById(notCompletedTodo._id).then(doc => {
+                    expect(doc.text).to.be.equal(res.body.todo.text);
+                    done();
+                }, err => {
+                    done(err);
+                });
+            });
+    });
+    it('should clear completedAt when todo is not completed', done => {
+        request(app)
+            .patch(`/todos/${completedTodo._id.toHexString()}`)
+            .send({ text: "completed test todo", completed: false })
+            .expect(200)
+            .expect(res => {
+                expect(res.body.text).to.be.equal('completed test todo');
+                expect(res.body.completed).to.be.false;
+                expect(res.body.completedAt).to.not.exist;
+            })
+            .end((err, res) => {
+                ToDo.findById(completedTodo._id).then(doc => {
+                    expect(doc.text).to.equal('completed test todo');
+                    expect(doc.completed).to.be.false;
+                    expect(doc.completedAt).to.not.exist;
+                    done();
+                }).catch(e => {
+                    done(e);
+                })
+            })
+    });
+    after((done) => {
+        ToDo.deleteMany({ text: /test/ }).then(() => done()).catch(e=>done(e));
+    });
+});
