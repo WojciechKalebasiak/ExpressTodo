@@ -2,9 +2,11 @@ require('./config/config');
 const express = require('express');
 const bodyParser = require('body-parser');
 const ObjectID = require('mongodb').ObjectID;
+
 const { mongoose } = require('./db/mongoose');
 const { User } = require('./models/User');
 const { ToDo } = require('./models/ToDo');
+const { authenticate } = require('./middleware/middleware');
 
 const app = express();
 app.use(bodyParser.json());
@@ -93,11 +95,14 @@ app.post('/users', (req, res) => {
             return user.generateAuthToken();
         })
         .then(token => {
-            res.header('x-header',token).status(201).send(user);
+            res.header('x-header', token).status(201).send(user);
         })
         .catch(e => {
             res.status(500).send(e.message);
         });
+});
+app.get('/users/me', authenticate, (req, res) => {
+    res.status(200).send(res.locals.user);
 });
 app.listen(`${port}`, () => {
     console.log(`Starting at ${port}`);
