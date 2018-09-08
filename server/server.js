@@ -1,17 +1,14 @@
+require('./config/config');
 const express = require('express');
 const bodyParser = require('body-parser');
-const _ = require('lodash');
 const ObjectID = require('mongodb').ObjectID;
-
 const { mongoose } = require('./db/mongoose');
 const { User } = require('./models/User');
 const { ToDo } = require('./models/ToDo');
 
-const PORT = process.env.PORT || 3000;
-
 const app = express();
 app.use(bodyParser.json());
-
+const port = process.env.PORT;
 app.post('/todos', (req, res) => {
     const newTask = new ToDo({ text: req.body.text });
     newTask.save().then((doc) => {
@@ -85,7 +82,24 @@ app.patch('/todos/:id', (req, res) => {
         res.status(400).send();
     });
 });
-app.listen(`${PORT}`, () => {
-    console.log(`Starting at ${PORT}`);
+app.post('/users', (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).send();
+    }
+    const user = new User({ email, password });
+    user.save()
+        .then(user => {
+            return user.generateAuthToken();
+        })
+        .then(token => {
+            res.header('x-header',token).status(201).send(user);
+        })
+        .catch(e => {
+            res.status(500).send(e.message);
+        });
+});
+app.listen(`${port}`, () => {
+    console.log(`Starting at ${port}`);
 });
 module.exports = { app };
