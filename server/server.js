@@ -103,6 +103,21 @@ app.post('/users', (req, res) => {
 app.get('/users/me', authenticate, (req, res) => {
     res.status(200).send(res.locals.user);
 });
+app.post('/users/login', (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).end();
+    }
+    User.findByCredentials(email, password)
+        .then(user =>
+            user.generateAuthToken().then((token) => {
+                res.header('x-auth', token).send(user);
+            })
+        )
+        .catch(e => {
+            res.status(400).send();
+        });
+});
 app.listen(`${port}`, () => {
     console.log(`Starting at ${port}`);
 });
