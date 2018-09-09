@@ -1,9 +1,10 @@
+
 const expect = require('chai').expect;
 const request = require('supertest');
 const ObjectID = require('mongodb').ObjectID;
+
 const { app } = require('../server/server');
 const { ToDo } = require('../server/models/ToDo');
-
 describe('POST /todos', () => {
     it('should create a new todo', done => {
         const text = "Test";
@@ -23,7 +24,7 @@ describe('POST /todos', () => {
                     done();
                 }, err => {
                     done(err);
-                })
+                });
             });
     });
 
@@ -45,12 +46,11 @@ describe('POST /todos', () => {
             });
     });
     after((done) => {
-        ToDo.deleteOne({ text: { $regex: /Test/ } }).then(() => done());
+        ToDo.deleteMany({ text: { $regex: /Test/ } }).then(() => done());
     })
 });
 describe('GET /todos', () => {
-    let TodosToFind;
-    const ToDos = [
+    let todos = [
         {
             text: 'Some test todo',
         },
@@ -60,19 +60,17 @@ describe('GET /todos', () => {
         },
     ];
     before((done) => {
-        ToDo.insertMany(ToDos).then(() =>
-            ToDo.find({ text: { $regex: /test/ } }).then(todos => {
-                TodosToFind = JSON.parse(JSON.stringify(todos));
-                done();
-            })
-        );
+        ToDo.insertMany(todos).then(docs => {
+            todos = JSON.parse(JSON.stringify(docs));
+            done();
+        });
     });
     it('should return all todos', (done) => {
         request(app)
             .get('/todos')
             .expect(200)
             .expect((res) => {
-                expect(res.body.todos).to.deep.include.members(TodosToFind);
+                expect(res.body.todos).to.include.deep.members(todos);
             })
             .end(done);
     });
@@ -82,24 +80,20 @@ describe('GET /todos', () => {
     });
 });
 describe('GET /todos/:id', () => {
-    let TodoToFind;
-    const ToDoToInsert = {
-        text: 'Some test todo',
-    };
+    let testTodo;
     before((done) => {
-        ToDo.insertMany(ToDoToInsert).then(insertedTodo => {
-            ToDo.findById(insertedTodo[0]._id).then(todo => {
-                TodoToFind = JSON.parse(JSON.stringify(todo));
-                done();
-            });
+        testTodo = new ToDo({ text: 'get test todo' });
+        testTodo.save().then(doc => {
+            testTodo = JSON.parse(JSON.stringify(doc));
+            done();
         });
     });
     it('should return correct todo', (done) => {
         request(app)
-            .get(`/todos/${TodoToFind._id}`)
+            .get(`/todos/${testTodo._id}`)
             .expect(200)
             .expect((res) => {
-                expect(res.body.todo.text).to.equal(TodoToFind.text);
+                expect(res.body.todo.text).to.equal(testTodo.text);
             })
             .end(done);
     });
@@ -122,24 +116,20 @@ describe('GET /todos/:id', () => {
     });
 });
 describe('DELETE /todos/:id', () => {
-    let TodoToDelete;
-    const ToDoToInsert = {
-        text: 'Some test todo',
-    }
+    let testTodo;
     before((done) => {
-        ToDo.insertMany(ToDoToInsert).then(insertedTodo => {
-            ToDo.findById(insertedTodo[0]._id).then(todo => {
-                TodoToDelete = JSON.parse(JSON.stringify(todo));
-                done();
-            });
+        testTodo = new ToDo({ text: "delete test todo" });
+        testTodo.save().then(doc => {
+            testTodo = JSON.parse(JSON.stringify(doc));
+            done();
         });
     });
     it('should delete correct document', (done) => {
         request(app)
-            .delete(`/todos/${TodoToDelete._id}`)
+            .delete(`/todos/${testTodo._id}`)
             .expect(200)
             .expect((res) => {
-                expect(res.body.todo).to.eql(TodoToDelete);
+                expect(res.body.todo).to.eql(testTodo);
             })
             .end((err, res) => {
                 if (err) {
@@ -171,7 +161,7 @@ describe('PATCH /todos/:id', () => {
     let completedTodo = {
         text: "test completed todo",
         completed: true,
-        completedAt:333
+        completedAt: 333
     };
     before((done) => {
         ToDo.insertMany([completedTodo, notCompletedTodo]).then(docs => {
@@ -223,6 +213,6 @@ describe('PATCH /todos/:id', () => {
             })
     });
     after((done) => {
-        ToDo.deleteMany({ text: /test/ }).then(() => done()).catch(e=>done(e));
+        ToDo.deleteMany({ text: /test/ }).then(() => done()).catch(e => done(e));
     });
 });

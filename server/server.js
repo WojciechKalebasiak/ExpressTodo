@@ -7,7 +7,6 @@ const { mongoose } = require('./db/mongoose');
 const { User } = require('./models/User');
 const { ToDo } = require('./models/ToDo');
 const { authenticate } = require('./middleware/middleware');
-
 const app = express();
 app.use(bodyParser.json());
 const port = process.env.PORT;
@@ -95,10 +94,10 @@ app.post('/users', (req, res) => {
             return user.generateAuthToken();
         })
         .then(token => {
-            res.header('x-header', token).status(201).send(user);
+            res.header('x-auth', token).status(201).send(user);
         })
         .catch(e => {
-            res.status(500).send(e.message);
+            res.status(400).send(e.message);
         });
 });
 app.get('/users/me', authenticate, (req, res) => {
