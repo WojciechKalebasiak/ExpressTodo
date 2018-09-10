@@ -115,3 +115,51 @@ describe('POST /users', () => {
         User.deleteOne({ email: { $regex: /test/ } }).then(() => { done(); });
     });
 });
+describe('POST /users/login', done => {
+    const testCredentials = { email: 'testuser@example.com', password: 'testpassword' };
+    let userID;
+    before(done => {
+        const newUser = new User(testCredentials);
+        User.deleteMany({}).then(() => {
+            newUser.save().then((doc) => {
+                userID = doc._id.toHexString();
+                done();
+            });
+        });
+    })
+    it('should login if correct password sent', done => {
+        request(app)
+            .post('/users/login')
+            .send(testCredentials)
+            .expect(200)
+            .expect(res => {
+                expect(res.body.email).to.equal(testCredentials.email);
+                expect(res.body._id).to.equal(userID);
+                expect(res.headers['x-auth']).to.exist;
+            })
+            .end((err, res) => {
+                if (err) {
+                    return done(err)
+                }
+                User.findById(userID)
+                    .then(user => {
+                        expect(user.tokens[0]).to.deep.include({ token: res.headers['x-auth'] });
+                        expect(user.password).to.not.equal(testCredentials.password);
+                        done();
+                    })
+                    .catch(err => {
+                        done(err);
+                    })
+            });
+    });
+    it('should reject if wrong password sent', done => {
+        request(app)
+            .post('/users/login')
+            .send({ email: testCredentials.email, password: 'wrongpassword' })
+            .expect(400)
+            .expect(res => {
+                expect(res.headers['x-auth']).to.not.exist;
+            })
+            .end(done);
+    });
+}); 
