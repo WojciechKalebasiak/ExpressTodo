@@ -118,6 +118,15 @@ app.post('/users/login', (req, res) => {
             res.status(400).send();
         });
 });
+app.delete('/users/me/token', authenticate, (req, res) => {
+    res.locals.user.removeToken(res.locals.token)
+        .then(() => {
+            res.status(200).send()
+        })
+        .catch(() => {
+            res.status(400).send();
+        });
+});
 app.listen(`${port}`, () => {
     console.log(`Starting at ${port}`);
 });

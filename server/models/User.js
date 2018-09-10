@@ -45,6 +45,16 @@ UserSchema.methods.toJSON = function () {
     const { email, _id } = userObject;
     return { email, _id };
 };
+UserSchema.methods.removeToken = function (token) {
+    const user = this;
+    return user.update({
+        $pull: {
+            tokens: {
+                token
+            }
+        }
+    })
+}
 UserSchema.statics.findByCredentials = function (email, password) {
     const User = this;
     return User.findOne({ email })

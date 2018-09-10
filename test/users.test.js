@@ -162,4 +162,47 @@ describe('POST /users/login', done => {
             })
             .end(done);
     });
-}); 
+    after(done => {
+        User.deleteMany({ email: { $regex: /testuser/ } }).then(() => {
+            done();
+        });
+    });
+});
+describe('DELETE /users/me/token', () => {
+    const testID = new ObjectID();
+    let testUser = {
+        email: 'testuser@example.com',
+        password: 'anothertestpass',
+        _id: testID,
+        tokens: [{
+            access: 'auth',
+            token: jwt.sign({ _id: testID.toHexString() }, 'abc123').toString()
+        }]
+    }
+    before(done => {
+        const user = new User(testUser);
+        user.save().then(() => {
+            done();
+        });
+    });
+    it('should remove auth token on logout', done => {
+        request(app)
+            .delete('/users/me/token')
+            .set('x-auth', testUser.tokens[0].token)
+            .expect(200)
+            .end((err, res) => {
+                if (err) {
+                    return done(err);
+                }
+                User.findById(testID).then(user => {
+                    expect(user.tokens.length).to.equal(0);
+                    done();
+                });
+            });
+    });
+    after(done => {
+        User.deleteMany({ email: { $regex: /testuser/ } }).then(() => {
+            done();
+        });
+    });
+});
