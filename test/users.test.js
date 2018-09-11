@@ -6,38 +6,19 @@ const { ObjectID } = require('mongodb');
 
 const { app } = require('../server/server');
 const { User } = require('../server/models/User');
+const { users, populateUsers } = require('./seed/seed');
 
+beforeEach(populateUsers);
 describe('GET /users/me', () => {
-    const testID = new ObjectID();
-    let testUserOne = {
-        email: 'testuserone@example.com',
-        password: 'testpass'
-    };
-    let testUserTwo = {
-        email: 'testusertwo@example.com',
-        password: 'anothertestpass',
-        _id: testID,
-        tokens: [{
-            access: 'auth',
-            token: jwt.sign({ _id: testID.toHexString() }, 'abc123').toString()
-        }]
-    }
-    before(done => {
-        User.deleteMany({}).then(() => {
-            User.insertMany([testUserOne, testUserTwo]).then(() => {
-                done();
-            });
-        });
-    });
     it('should return user if authenticated', done => {
-        const token = testUserTwo.tokens[0].token;
+        const token = users[1].tokens[0].token;
         request(app)
             .get('/users/me')
             .set('x-auth', token)
             .expect(200)
             .expect(res => {
-                expect(res.body.email).to.equal(testUserTwo.email);
-                expect(res.body._id).to.equal(testUserTwo._id.toHexString());
+                expect(res.body.email).to.equal(users[1].email);
+                expect(res.body._id).to.equal(users[1]._id.toHexString());
             })
             .end(done);
     });
@@ -98,7 +79,7 @@ describe('POST /users', () => {
     });
     it('should not create user when email already in use', done => {
         //Data form first test suite
-        const email = "postTest@example.com";
+        const email = users[0].email;
         const password = 'testpassword';
 
         request(app)
@@ -116,34 +97,25 @@ describe('POST /users', () => {
     });
 });
 describe('POST /users/login', done => {
-    const testCredentials = { email: 'testuser@example.com', password: 'testpassword' };
-    let userID;
-    before(done => {
-        const newUser = new User(testCredentials);
-        User.deleteMany({}).then(() => {
-            newUser.save().then((doc) => {
-                userID = doc._id.toHexString();
-                done();
-            });
-        });
-    })
     it('should login if correct password sent', done => {
+        const testCredentials = { email: users[1].email, password: 'abc123' };
         request(app)
             .post('/users/login')
             .send(testCredentials)
             .expect(200)
             .expect(res => {
                 expect(res.body.email).to.equal(testCredentials.email);
-                expect(res.body._id).to.equal(userID);
+                expect(res.body._id).to.equal(users[1]._id.toHexString());
                 expect(res.headers['x-auth']).to.exist;
             })
             .end((err, res) => {
                 if (err) {
                     return done(err)
                 }
-                User.findById(userID)
+                User.findById(users[1]._id)
                     .then(user => {
-                        expect(user.tokens[0]).to.deep.include({ token: res.headers['x-auth'] });
+                        expect(user.tokens[1]).to.deep.include({ token: res.headers['x-auth'] });
+                        expect(user.tokens.length).to.equal(2);
                         expect(user.password).to.not.equal(testCredentials.password);
                         done();
                     })
@@ -155,54 +127,38 @@ describe('POST /users/login', done => {
     it('should reject if wrong password sent', done => {
         request(app)
             .post('/users/login')
-            .send({ email: testCredentials.email, password: 'wrongpassword' })
+            .send({ email: users[0].email, password: 'wrongpassword' })
             .expect(400)
             .expect(res => {
                 expect(res.headers['x-auth']).to.not.exist;
             })
-            .end(done);
-    });
-    after(done => {
-        User.deleteMany({ email: { $regex: /testuser/ } }).then(() => {
-            done();
-        });
+            .end((err, res) => {
+                if (err) {
+                    return done(err);
+                }
+                User.findById(users[0]._id).then((user) => {
+                    expect(user.tokens.length).to.equal(1);
+                    done();
+                }).catch(e => {
+                    done(e);
+                });
+            });
     });
 });
 describe('DELETE /users/me/token', () => {
-    const testID = new ObjectID();
-    let testUser = {
-        email: 'testuser@example.com',
-        password: 'anothertestpass',
-        _id: testID,
-        tokens: [{
-            access: 'auth',
-            token: jwt.sign({ _id: testID.toHexString() }, 'abc123').toString()
-        }]
-    }
-    before(done => {
-        const user = new User(testUser);
-        user.save().then(() => {
-            done();
-        });
-    });
     it('should remove auth token on logout', done => {
         request(app)
             .delete('/users/me/token')
-            .set('x-auth', testUser.tokens[0].token)
+            .set('x-auth', users[1].tokens[0].token)
             .expect(200)
             .end((err, res) => {
                 if (err) {
                     return done(err);
                 }
-                User.findById(testID).then(user => {
+                User.findById(users[1]._id).then(user => {
                     expect(user.tokens.length).to.equal(0);
                     done();
                 });
             });
-    });
-    after(done => {
-        User.deleteMany({ email: { $regex: /testuser/ } }).then(() => {
-            done();
-        });
     });
 });

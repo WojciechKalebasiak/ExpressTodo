@@ -10,27 +10,31 @@ const { authenticate } = require('./middleware/middleware');
 const app = express();
 app.use(bodyParser.json());
 const port = process.env.PORT;
-app.post('/todos', (req, res) => {
-    const newTask = new ToDo({ text: req.body.text });
+app.post('/todos', authenticate, (req, res) => {
+    const newTask = new ToDo({
+        text: req.body.text,
+        _creator: res.locals.user._id
+    });
     newTask.save().then((doc) => {
         res.status(201).send(doc)
     }).catch((err) => {
         res.status(400).send(err);
     });
 });
-app.get('/todos', (req, res) => {
-    ToDo.find().then(todos => {
+app.get('/todos', authenticate, (req, res) => {
+    ToDo.find({ _creator: res.locals.user._id }).then(todos => {
         res.status(200).send({ todos });
     }, e => {
         res.status(400).send(e);
     });
 });
-app.get('/todos/:id', (req, res) => {
+app.get('/todos/:id', authenticate, (req, res) => {
     const id = req.params.id;
+    const creatorID = res.locals.user._id;
     if (!ObjectID.isValid(id)) {
         return res.status(404).send();
     }
-    ToDo.findById(id).then(todo => {
+    ToDo.findOne({ _id: id, _creator: creatorID }).then(todo => {
         if (!todo) {
             return res.status(404).send();
         }
@@ -41,12 +45,13 @@ app.get('/todos/:id', (req, res) => {
         res.status(400).send();
     });
 });
-app.delete('/todos/:id', (req, res) => {
+app.delete('/todos/:id', authenticate, (req, res) => {
+    const creatorID = res.locals.user._id;
     const id = req.params.id;
     if (!ObjectID.isValid(id)) {
         return res.status(404).end();
     }
-    ToDo.findByIdAndDelete(id).then(todo => {
+    ToDo.findOneAndDelete({ _id: id, _creator: creatorID }).then(todo => {
         if (!todo) {
             return res.status(404).end();
         }
@@ -55,7 +60,8 @@ app.delete('/todos/:id', (req, res) => {
         res.status(400).end();
     });
 });
-app.patch('/todos/:id', (req, res) => {
+app.patch('/todos/:id', authenticate, (req, res) => {
+    const creatorID = res.locals.user._id;
     const id = req.params.id;
     const body = {
         completed: req.body.completed,
@@ -74,7 +80,7 @@ app.patch('/todos/:id', (req, res) => {
     if (typeof body.text === 'string' && body.text.length === 0) {
         return res.status(500).send();
     }
-    ToDo.findByIdAndUpdate(id, { $set: body }, { new: true }).then(todo => {
+    ToDo.findOneAndUpdate({ _id: id, _creator: creatorID }, { $set: body }, { new: true }).then(todo => {
         if (!todo) {
             return res.status(404).send();
         }

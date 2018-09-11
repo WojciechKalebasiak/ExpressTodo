@@ -13,6 +13,10 @@ const ToDoSchema = mongoose.Schema({
     completedAt: {
         type: Number,
         default: null
+    },
+    _creator: {
+        require:true,
+        type:mongoose.Schema.Types.ObjectId
     }
 });
 const ToDo = mongoose.model('Todo', ToDoSchema);
